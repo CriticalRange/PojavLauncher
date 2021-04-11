@@ -2,6 +2,7 @@ package net.kdt.pojavlaunch;
 
 import android.app.*;
 import android.content.*;
+import android.graphics.Bitmap;
 import android.text.*;
 import android.text.method.*;
 import android.view.*;
@@ -9,17 +10,28 @@ import android.widget.*;
 import androidx.appcompat.app.*;
 import com.kdt.pickafile.*;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
 import net.kdt.pojavlaunch.fragments.*;
 import net.kdt.pojavlaunch.prefs.*;
 import net.kdt.pojavlaunch.tasks.*;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.PopupMenu;
+
 import net.kdt.pojavlaunch.value.*;
+import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
+import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
+import net.kdt.pojavlaunch.value.launcherprofiles.VersionProfileAdapter;
 
 public abstract class BaseLauncherActivity extends BaseActivity {
 	public Button mPlayButton;
 	public ConsoleFragment mConsoleView;
     public CrashFragment mCrashView;
+    public ProfileEditorFragment mProfileEditView;
     public ProgressBar mLaunchProgress;
 	public Spinner mVersionSelector;
 	public TextView mLaunchTextStatus, mTextVersion;
@@ -27,8 +39,8 @@ public abstract class BaseLauncherActivity extends BaseActivity {
     public JMinecraftVersionList mVersionList;
 	public MinecraftDownloaderTask mTask;
 	public MinecraftAccount mProfile;
-	public String[] mAvailableVersions;
-    
+	public ArrayList<String> mVersionStringList;
+    public static Map<String, Bitmap> versionIcons = new HashMap<>();
 	public boolean mIsAssetsProcessing = false;
     protected boolean canBack = false;
     
@@ -126,8 +138,9 @@ public abstract class BaseLauncherActivity extends BaseActivity {
             statusIsLaunching(false);
         } else if (canBack) {
             v.setEnabled(false);
+            //Tools.setCustomGameDir(Tools.DIR_GAME_HOME+"/pojav_aux_test");
             mTask = new MinecraftDownloaderTask(this);
-            mTask.execute(mProfile.selectedVersion);
+            mTask.execute(LauncherProfiles.mainProfileJson.profiles.get(mProfile.selectedProfile).lastVersionId);
             mCrashView.resetCrashLog = true;
         }
     }
@@ -174,6 +187,7 @@ public abstract class BaseLauncherActivity extends BaseActivity {
             LauncherPreferences.DEFAULT_PREF.registerOnSharedPreferenceChangeListener(listRefreshListener);
         }
         new RefreshVersionListTask(this).execute();
+        updateProfileList();
         System.out.println("call to onResumeFragments");
         try{
             final ProgressDialog barrier = new ProgressDialog(this);
@@ -230,6 +244,60 @@ public abstract class BaseLauncherActivity extends BaseActivity {
     public boolean onTouchEvent(MotionEvent event) {
         return super.onTouchEvent(event);
     }
+    public void updateProfileList() {
+        final PopupMenu popup = new PopupMenu(this, this.mVersionSelector);
+        final BaseLauncherActivity thiz = this;
+        popup.getMenuInflater().inflate(R.menu.menu_versionopt, popup.getMenu());
+        LauncherProfiles.update();
+        VersionProfileAdapter adapterVer = new VersionProfileAdapter(this);
+        this.mVersionSelector.setAdapter(adapterVer);
+        int selectedProfile = Arrays.binarySearch(adapterVer.profileKeys,mProfile.selectedProfile);
+        if(selectedProfile > -1) {
+            this.mVersionSelector.setSelection(selectedProfile);
+        }
 
+        this.mVersionSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
+
+            @Override
+            public void onItemSelected(AdapterView<?> p1, View p2, int p3, long p4)
+            {
+                String version = ((MinecraftProfile)p1.getItemAtPosition(p3)).lastVersionId;
+                thiz.mProfile.selectedProfile = ((VersionProfileAdapter)p1.getAdapter()).profileKeys[p3];
+                PojavProfile.setCurrentProfile(thiz, thiz.mProfile);
+                if (PojavProfile.isFileType(thiz)) {
+                    try {
+                        PojavProfile.setCurrentProfile(thiz, thiz.mProfile.save());
+                    } catch (IOException e) {
+                        Tools.showError(thiz, e);
+                    }
+                }
+
+                thiz.mTextVersion.setText(thiz.getString(R.string.mcl_version_msg, version));
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> p1)
+            {
+                // TODO: Implement this method
+            }
+        });
+        this.mVersionSelector.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener(){
+            @Override
+            public boolean onItemLongClick(AdapterView<?> p1, View p2, int p3, long p4)
+            {
+                // Implement copy, remove, reinstall,...
+                popup.show();
+                return true;
+            }
+        });
+
+        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            public boolean onMenuItemClick(MenuItem item) {
+                return true;
+            }
+        });
+
+        this.mTextVersion.setText(this.getString(R.string.mcl_version_msg,this.mVersionSelector.getSelectedItem()));
+    }
     protected abstract void initTabs(int pageIndex);
 }
