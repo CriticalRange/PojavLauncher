@@ -32,6 +32,7 @@ import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -135,7 +136,6 @@ public class PojavLoginActivity extends BaseActivity
             try {
                 Thread.sleep(2000);
             } catch (InterruptedException e) {}
-
 
             publishProgress("visible");
 
@@ -652,25 +652,17 @@ public class PojavLoginActivity extends BaseActivity
             View child = inflater.inflate(R.layout.simple_account_list_item, null);
             TextView accountName = child.findViewById(R.id.accountitem_text_name);
             ImageButton removeButton = child.findViewById(R.id.accountitem_button_remove);
+            ImageView imageView = child.findViewById(R.id.account_head);
 
             String accNameStr = s.substring(0, s.length() - 5);
             String skinFaceBase64 = MinecraftAccount.load(accNameStr).skinFaceBase64;
-            Bitmap bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888);
             if (skinFaceBase64 != null) {
                 byte[] faceIconBytes = Base64.decode(skinFaceBase64, Base64.DEFAULT);
-                bitmap = BitmapFactory.decodeByteArray(faceIconBytes, 0, faceIconBytes.length);
-            } else {
-                try {
-                    bitmap = BitmapFactory.decodeStream(getAssets().open("ic_steve.png"));
-                } catch (IOException e) {
-                    // Should never happen
-                    e.printStackTrace();
-                }
+                Bitmap bitmap = BitmapFactory.decodeByteArray(faceIconBytes, 0, faceIconBytes.length);
+
+                imageView.setImageDrawable(new BitmapDrawable(getResources(),
+                        bitmap));
             }
-            accountName.setCompoundDrawablesWithIntrinsicBounds(new BitmapDrawable(getResources(),
-                    Bitmap.createScaledBitmap(bitmap, 80, 80, false)),
-                    null, null, null);
-            
             accountName.setText(accNameStr);
 
             accountListLayout.addView(child);

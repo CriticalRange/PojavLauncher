@@ -2,6 +2,7 @@
 [![Crowdin](https://badges.crowdin.net/pojavlauncher/localized.svg)](https://crowdin.com/project/pojavlauncher)
 [![Discord](https://img.shields.io/discord/724163890803638273.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/6RpEJda)
 [![Reddit](https://img.shields.io/badge/dynamic/json.svg?label=r/PojavLauncher%20member%20count&query=$.data.subscribers&url=https://www.reddit.com/r/PojavLauncher/about.json)](https://reddit.com/r/PojavLauncher)
+[![Google Play](https://gist.githubusercontent.com/meefik/54a54afa7cc1dc600bdb855cb7895a4a/raw/ad617c006a1ac28d067c9a87cec60199ca8fef7c/get-it-on-google-play.png)](https://play.google.com/store/apps/details?id=net.kdt.pojavlaunch)
 # PojavLauncher
 
 ## Note
@@ -77,6 +78,7 @@ cp jre_lwjgl3glfw/build/libs/jre_lwjgl3glfw-3.2.3.jar app_pojavlauncher/src/main
 - [ ] More...
 
 ## Known Issues
+- Minecraft `21w10a` or newer are currently not yet supported due to the new GLSL usage.
 - in 1.16 and up spawn eggs banners are white (you can fix this by adding this to your JVM flags 
 `-Dorg.lwjgl.opengl.libname=libgl4es_115.so`, only works on 1.16 and up, do not use under this version)
 - controller mods aren't working

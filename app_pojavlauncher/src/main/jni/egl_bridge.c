@@ -64,14 +64,7 @@ JNIEXPORT void JNICALL Java_net_kdt_pojavlaunch_utils_JREUtils_setupBridgeWindow
 JNIEXPORT jlong JNICALL Java_org_lwjgl_glfw_GLFW_nativeEglGetCurrentContext(JNIEnv* env, jclass clazz) {
     return (jlong) eglGetCurrentContext();
 }
-static const EGLint es3_ctx_attribs[] = {
-    EGL_CONTEXT_CLIENT_VERSION, 3,
-    EGL_NONE
-};
-static const EGLint es2_ctx_attribs[] = {
-    EGL_CONTEXT_CLIENT_VERSION, 2,
-    EGL_NONE
-};
+
 JNIEXPORT jboolean JNICALL Java_org_lwjgl_glfw_GLFW_nativeEglInit(JNIEnv* env, jclass clazz) {
     if (potatoBridge.eglDisplay == NULL || potatoBridge.eglDisplay == EGL_NO_DISPLAY) {
         potatoBridge.eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -85,7 +78,7 @@ JNIEXPORT jboolean JNICALL Java_org_lwjgl_glfw_GLFW_nativeEglInit(JNIEnv* env, j
     // printf("EGLBridge: ANativeWindow pointer = %p\n", potatoBridge.androidWindow);
     //(*env)->ThrowNew(env,(*env)->FindClass(env,"java/lang/Exception"),"Trace exception");
     if (!eglInitialize(potatoBridge.eglDisplay, NULL, NULL)) {
-        printf("EGLBridge: Error eglInitialize() failed\n");
+        printf("EGLBridge: Error eglInitialize() failed: %s\n", eglGetError());
         return JNI_FALSE;
     }
 
@@ -104,7 +97,7 @@ JNIEXPORT jboolean JNICALL Java_org_lwjgl_glfw_GLFW_nativeEglInit(JNIEnv* env, j
     EGLint vid;
 
     if (!eglChooseConfig(potatoBridge.eglDisplay, attribs, &config, 1, &num_configs)) {
-        printf("EGLBridge: Error couldn't get an EGL visual config\n");
+        printf("EGLBridge: Error couldn't get an EGL visual config: %s\n", eglGetError());
         return JNI_FALSE;
     }
 
@@ -112,7 +105,7 @@ JNIEXPORT jboolean JNICALL Java_org_lwjgl_glfw_GLFW_nativeEglInit(JNIEnv* env, j
     assert(num_configs > 0);
 
     if (!eglGetConfigAttrib(potatoBridge.eglDisplay, config, EGL_NATIVE_VISUAL_ID, &vid)) {
-        printf("EGLBridge: Error eglGetConfigAttrib() failed\n");
+        printf("EGLBridge: Error eglGetConfigAttrib() failed: %s\n", eglGetError());
         return JNI_FALSE;
     }
 
@@ -201,21 +194,22 @@ Java_org_lwjgl_glfw_GLFW_nativeEglDetachOnCurrentThread(JNIEnv *env, jclass claz
     //Obstruct the context on the current thread
     eglMakeCurrent(potatoBridge.eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 }
+
 JNIEXPORT jlong JNICALL
 Java_org_lwjgl_glfw_GLFW_nativeEglCreateContext(JNIEnv *env, jclass clazz, jlong contextSrc) {
-    EGLContext* ctx = eglCreateContext(potatoBridge.eglDisplay,config,(void*)contextSrc,es3_ctx_attribs);
-    if (ctx == EGL_NO_CONTEXT) {
-        printf("EGLBridge: Could not create ES3 context, fallbacking to ES2\n");
-        setenv("LIBGL_ES", "2", 1);
-        ctx = eglCreateContext(potatoBridge.eglDisplay,config,(void*)contextSrc,es2_ctx_attribs);
-    } else {
-        setenv("LIBGL_ES", "3", 1);
-    }
+    const EGLint ctx_attribs[] = {
+        EGL_CONTEXT_CLIENT_VERSION, atoi(getenv("LIBGL_ES")),
+        EGL_NONE
+    };
+    EGLContext* ctx = eglCreateContext(potatoBridge.eglDisplay, config, (void*)contextSrc, ctx_attribs);
 
+    potatoBridge.eglContext = ctx;
+    
     printf("EGLBridge: Created CTX pointer = %p\n",ctx);
     //(*env)->ThrowNew(env,(*env)->FindClass(env,"java/lang/Exception"),"Trace exception");
     return (long)ctx;
 }
+
 JNIEXPORT jboolean JNICALL Java_org_lwjgl_glfw_GLFW_nativeEglTerminate(JNIEnv* env, jclass clazz) {
     terminateEgl();
     return JNI_TRUE;

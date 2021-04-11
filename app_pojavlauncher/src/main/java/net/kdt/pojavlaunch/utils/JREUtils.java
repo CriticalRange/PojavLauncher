@@ -249,11 +249,15 @@ public class JREUtils
         if(!envMap.containsKey("LIBGL_ES")) {
             int glesMajor = getDetectedVersion();
             Log.i("glesDetect","GLES version detected: "+glesMajor);
-            if(glesMajor < 2) {
+            if (glesMajor < 3) {
                 //fallback to 2 since it's the minimum for the entire app
                 envMap.put("LIBGL_ES","2");
-            }else{
-                envMap.put("LIBGL_ES",""+glesMajor);
+            } else if (LauncherPreferences.PREF_RENDERER.startsWith("opengles")) {
+                envMap.put("LIBGL_ES", LauncherPreferences.PREF_RENDERER.replace("opengles", ""));
+            } else {
+                // TODO if can: other backends such as Vulkan.
+                // Sure, they should provide GLES 3 support.
+                envMap.put("LIBGL_ES", "3");
             }
         }
         for (Map.Entry<String, String> env : envMap.entrySet()) {
@@ -282,25 +286,21 @@ public class JREUtils
         List<String> javaArgList = new ArrayList<String>();
         javaArgList.add(Tools.DIR_HOME_JRE + "/bin/java");
         Tools.getJavaArgs(ctx, javaArgList);
-        if(LauncherPreferences.DEFAULT_PREF.getBoolean("autoRam",true)) {
-            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
-            ((ActivityManager)ctx.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryInfo(mi);
             purgeArg(javaArgList,"-Xms");
             purgeArg(javaArgList,"-Xmx");
-            if(Tools.CURRENT_ARCHITECTURE.contains("32") && ((mi.availMem / 1048576L)-50) > 750) {
-                javaArgList.add("-Xms750M");
-                javaArgList.add("-Xmx750M");
-            }else {
-                javaArgList.add("-Xms" + ((mi.availMem / 1048576L) - 50) + "M");
-                javaArgList.add("-Xmx" + ((mi.availMem / 1048576L) - 50) + "M");
-            }
+            /*if(Tools.CURRENT_ARCHITECTURE.contains("32") && ((mi.availMem / 1048576L)-50) > 300) {
+                javaArgList.add("-Xms300M");
+                javaArgList.add("-Xmx300M");
+            }else {*/
+                javaArgList.add("-Xms" + LauncherPreferences.PREF_RAM_ALLOCATION + "M");
+                javaArgList.add("-Xmx" + LauncherPreferences.PREF_RAM_ALLOCATION + "M");
+            //}
             ctx.runOnUiThread(new Runnable() {
                 public void run() {
-                    Toast.makeText(ctx, ctx.getString(R.string.autoram_info_msg,((mi.availMem / 1048576L)-50)), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ctx, ctx.getString(R.string.autoram_info_msg,LauncherPreferences.PREF_RAM_ALLOCATION), Toast.LENGTH_SHORT).show();
                 }
             });
             System.out.println(javaArgList);
-        }
         javaArgList.addAll(args);
         
         // For debugging only!
