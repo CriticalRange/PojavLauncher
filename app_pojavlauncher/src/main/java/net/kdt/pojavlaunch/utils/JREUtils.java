@@ -68,7 +68,7 @@ public class JREUtils
         return ret;
     }
     public static void initJavaRuntime() {
-
+        dlopen(findInLdLibPath("libtinyiconv.so"));
         dlopen(findInLdLibPath("libjli.so"));
         dlopen(findInLdLibPath("libjvm.so"));
         dlopen(findInLdLibPath("libverify.so"));
@@ -85,9 +85,11 @@ public class JREUtils
         }
         dlopen(nativeLibDir + "/libopenal.so");
         
+        // may not necessary
         if (LauncherPreferences.PREF_CUSTOM_OPENGL_LIBNAME.equals("libgl4es_114.so")) {
             LauncherPreferences.PREF_CUSTOM_OPENGL_LIBNAME = nativeLibDir + "/libgl4es_114.so";
         }
+
         if (!dlopen(LauncherPreferences.PREF_CUSTOM_OPENGL_LIBNAME) && !dlopen(findInLdLibPath(LauncherPreferences.PREF_CUSTOM_OPENGL_LIBNAME))) {
             System.err.println("Failed to load custom OpenGL library " + LauncherPreferences.PREF_CUSTOM_OPENGL_LIBNAME + ". Fallbacking to GL4ES.");
             dlopen(nativeLibDir + "/libgl4es_114.so");
@@ -175,10 +177,9 @@ public class JREUtils
         Log.i("jrelog-logcat","Logcat thread started");
     }
     
-    public static void relocateLibPath(Context ctx) throws Exception {
+    public static void relocateLibPath(final Context ctx) throws Exception {
         if (JRE_ARCHITECTURE == null) {
-            Map<String, String> jreReleaseList = JREUtils.readJREReleaseProperties();
-            JRE_ARCHITECTURE = jreReleaseList.get("OS_ARCH");
+            JRE_ARCHITECTURE = readJREReleaseProperties().get("OS_ARCH");
             if (JRE_ARCHITECTURE.startsWith("i") && JRE_ARCHITECTURE.endsWith("86") && Tools.CURRENT_ARCHITECTURE.contains("x86") && !Tools.CURRENT_ARCHITECTURE.contains("64")) {
                 JRE_ARCHITECTURE = "i386/i486/i586";
             }
@@ -214,7 +215,7 @@ public class JREUtils
         LD_LIBRARY_PATH = ldLibraryPath.toString();
     }
     
-    public static void setJavaEnvironment(LoggableActivity ctx, @Nullable ShellProcessOperation shell) throws Throwable {
+    public static void setJavaEnvironment(LoggableActivity ctx) throws Throwable {
         Map<String, String> envMap = new ArrayMap<>();
         envMap.put("JAVA_HOME", Tools.DIR_HOME_JRE);
         envMap.put("HOME", Tools.DIR_GAME_NEW);
@@ -223,6 +224,12 @@ public class JREUtils
         
         // Fix white color on banner and sheep, since GL4ES 1.1.5
         envMap.put("LIBGL_NORMALIZE", "1");
+        
+        //gl4es testing stuff
+	envMap.put("LIBGL_BLITFULLSCREEN", "1");
+	envMap.put("LIBGL_BLITFB0", "1");
+	envMap.put("LIBGL_FB", "3");
+        envMap.put("LIBGL_NOTEXMAT", "1");
    
         envMap.put("MESA_GLSL_CACHE_DIR", ctx.getCacheDir().getAbsolutePath());
         envMap.put("LD_LIBRARY_PATH", LD_LIBRARY_PATH);
@@ -261,20 +268,10 @@ public class JREUtils
             }
         }
         for (Map.Entry<String, String> env : envMap.entrySet()) {
-            try {
-                if (shell == null) {
-                    Os.setenv(env.getKey(), env.getValue(), true);
-                } else {
-                    shell.writeToProcess("export " + env.getKey() + "=" + env.getValue());
-                }
-            } catch (Throwable th) {
-                ctx.appendlnToLog(Log.getStackTraceString(th));
-            }
+            Os.setenv(env.getKey(), env.getValue(), true);
         }
         
-        if (shell == null) {
-            setLdLibraryPath(LD_LIBRARY_PATH);
-        }
+        setLdLibraryPath(LD_LIBRARY_PATH);
         
         // return ldLibraryPath;
     }
@@ -312,7 +309,7 @@ public class JREUtils
         ctx.appendlnToLog("Executing JVM: \"" + sbJavaArgs.toString() + "\"");
 */
 
-        setJavaEnvironment(ctx, null);
+        setJavaEnvironment(ctx);
         initJavaRuntime();
         chdir(Tools.DIR_GAME_NEW);
 
